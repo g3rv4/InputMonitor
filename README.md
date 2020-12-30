@@ -1,0 +1,1 @@
+This little tool will listen for changes on the default audio input device and write it to ~/activeInputDevice.txt
