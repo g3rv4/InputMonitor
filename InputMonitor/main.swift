@@ -64,6 +64,11 @@ func updateFile () {
     let filename = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("activeInputDevice.txt")
     do {
         let nameStr = name as String
+        if (nameStr == "Silence") {
+            NSAppleScript(source:"tell application \"Keyboard Maestro Engine\" to do script \"Send mute event\"")!.executeAndReturnError(nil)
+        } else {
+            NSAppleScript(source:"tell application \"Keyboard Maestro Engine\" to do script \"Bind mute event\"")!.executeAndReturnError(nil)
+        }
         try nameStr.write(to: filename, atomically: true, encoding: String.Encoding.utf8)
     } catch {
         // failed to write file – bad permissions, bad filename, missing permissions, or more likely it can't be converted to the encoding
