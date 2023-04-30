@@ -12,13 +12,13 @@ func addListenerBlock( listenerBlock: @escaping AudioObjectPropertyListenerBlock
     var forPropertyAddress = AudioObjectPropertyAddress(
         mSelector: selector,
         mScope: kAudioObjectPropertyScopeGlobal,
-        mElement: kAudioObjectPropertyElementMaster)
+        mElement: kAudioObjectPropertyElementMain)
     
    if (kAudioHardwareNoError != AudioObjectAddPropertyListenerBlock(onAudioObjectID, &forPropertyAddress, nil, listenerBlock)) {
        print("Error calling: AudioObjectAddPropertyListenerBlock") }
 }
 
-addListenerBlock(listenerBlock: defaultOutputModified,
+addListenerBlock(listenerBlock: defaultInputModified,
                  onAudioObjectID: AudioObjectID(bitPattern: kAudioObjectSystemObject),
                  selector: kAudioHardwarePropertyDefaultInputDevice)
 
@@ -27,10 +27,10 @@ addListenerBlock(listenerBlock: devicesModified,
                  selector: kAudioHardwarePropertyDevices)
 
 func devicesModified (numberAddresses: UInt32, addresses: UnsafePointer<AudioObjectPropertyAddress>) {
-    NSAppleScript(source:"tell application \"Keyboard Maestro Engine\" to do script \"Unmute\"")!.executeAndReturnError(nil)
+    NSAppleScript(source:"tell application \"Keyboard Maestro Engine\" to do script \"Devices changed\"")!.executeAndReturnError(nil)
 }
 
-func defaultOutputModified (numberAddresses: UInt32, addresses: UnsafePointer<AudioObjectPropertyAddress>) {
+func defaultInputModified (numberAddresses: UInt32, addresses: UnsafePointer<AudioObjectPropertyAddress>) {
    var index: UInt32 = 0
    while index < numberAddresses {
        let address: AudioObjectPropertyAddress = addresses[0]
@@ -46,7 +46,7 @@ func defaultOutputModified (numberAddresses: UInt32, addresses: UnsafePointer<Au
 }
 
 func updateFile () {
-    var devicePropertyAddress = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultInputDevice, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMaster)
+    var devicePropertyAddress = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultInputDevice, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
     var deviceID: AudioObjectID = 0
     var dataSize = UInt32(truncatingIfNeeded: MemoryLayout<AudioDeviceID>.stride)
     let systemObjectID = AudioObjectID(bitPattern: kAudioObjectSystemObject)
@@ -56,7 +56,7 @@ func updateFile () {
     
     var name: CFString = "" as CFString
     var propertySize = UInt32(MemoryLayout<CFString>.stride)
-    var deviceNamePropertyAddress = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyDeviceNameCFString, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMaster)
+    var deviceNamePropertyAddress = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyDeviceNameCFString, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
     if (kAudioHardwareNoError != AudioObjectGetPropertyData(deviceID, &deviceNamePropertyAddress, 0, nil, &propertySize, &name)) {
         print("Could not get the device name")
     }
@@ -64,11 +64,7 @@ func updateFile () {
     let filename = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("activeInputDevice.txt")
     do {
         let nameStr = name as String
-        if (nameStr == "Silence") {
-            NSAppleScript(source:"tell application \"Keyboard Maestro Engine\" to do script \"Send mute event\"")!.executeAndReturnError(nil)
-        } else {
-            NSAppleScript(source:"tell application \"Keyboard Maestro Engine\" to do script \"Bind mute event\"")!.executeAndReturnError(nil)
-        }
+        NSAppleScript(source:"tell application \"Keyboard Maestro Engine\" to do script \"Input device changed\" with parameter \"" + nameStr + "\"")!.executeAndReturnError(nil)
         try nameStr.write(to: filename, atomically: true, encoding: String.Encoding.utf8)
     } catch {
         // failed to write file – bad permissions, bad filename, missing permissions, or more likely it can't be converted to the encoding
